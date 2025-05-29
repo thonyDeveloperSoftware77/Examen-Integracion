@@ -1,0 +1,11 @@
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: jwt-auth
+  namespace: servicios-estudiantiles
+plugin: jwt
+config:
+  key_claim_name: iss
+  secret_is_base64: false
+  claims_to_verify:
+  - exp

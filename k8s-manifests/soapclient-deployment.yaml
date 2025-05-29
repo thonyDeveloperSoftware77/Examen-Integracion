@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: soapclient-service
+  namespace: servicios-estudiantiles
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: soapclient-service
+  template:
+    metadata:
+      labels:
+        app: soapclient-service
+    spec:
+      containers:
+      - name: soapclient
+        image: soapclient-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: soapclient-service
+  namespace: servicios-estudiantiles
+spec:
+  selector:
+    app: soapclient-service
+  ports:
+  - port: 80
+    targetPort: 3000
