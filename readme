@@ -1,0 +1,111 @@
+Plataforma Integrada de Servicios Estudiantiles
+Descripción
+Este proyecto implementa una plataforma integrada para atender solicitudes académicas de estudiantes (certificados, legalizaciones, homologaciones y equivalencias), integrando tres sistemas independientes:
+
+Sistema Académico (microservicio REST: SolicitudService)
+
+Sistema de Certificación (servicio SOAP simulado: SOAPClientService)
+
+Sistema de Seguridad y Roles (autenticación con tokens JWT)
+
+El proyecto utiliza Kubernetes (Minikube) con Istio Service Mesh para resiliencia y monitoreo, y Kong como API Gateway para seguridad y gestión de tráfico.
+
+Arquitectura
+Microservicios:
+
+SolicitudService: Microservicio REST con endpoints POST /solicitudes y GET /solicitudes/{id}, valida JWT, y llama al servicio SOAP simulado para registrar certificaciones.
+
+SOAPClientService: Simulación REST del sistema SOAP externo que responde con estados (procesado, en revisión, rechazado).
+
+API Gateway (Kong):
+Gestiona la autenticación JWT, aplica rate limiting y enruta las solicitudes a los microservicios.
+
+Istio Service Mesh:
+Implementa mTLS, circuit breaking, retries, y permite monitoreo y trazabilidad.
+
+Monitoreo:
+Integración con Prometheus, Jaeger y Kiali para métricas, trazas distribuidas y visualización.
+
+Requisitos previos
+Docker instalado
+
+Minikube instalado y configurado
+
+kubectl instalado y configurado para Minikube
+
+Helm instalado (para instalar Kong)
+
+Node.js con Bun (para desarrollo local, opcional)
+
+Cómo desplegar
+1. Construir imágenes Docker para Minikube
+bash
+Copiar
+Editar
+eval $(minikube docker-env)
+docker build -t solicitud-service:latest ./solicitud-service
+docker build -t soapclient-service:latest ./soapclient-service
+2. Crear namespace y desplegar recursos Kubernetes
+bash
+Copiar
+Editar
+kubectl apply -f k8s-manifests/namespace.yaml
+kubectl apply -f k8s-manifests/solicitud-deployment.yaml
+kubectl apply -f k8s-manifests/soapclient-deployment.yaml
+kubectl apply -f k8s-manifests/istio-peer-authentication.yaml
+kubectl apply -f k8s-manifests/istio-destinationrule.yaml
+kubectl apply -f k8s-manifests/istio-virtualservice.yaml
+kubectl apply -f k8s-manifests/kong-jwt-plugin.yaml
+kubectl apply -f k8s-manifests/kong-rate-limit-plugin.yaml
+kubectl apply -f k8s-manifests/kong-ingress.yaml
+3. Instalar Kong API Gateway (si no está instalado)
+bash
+Copiar
+Editar
+helm repo add kong https://charts.konghq.com
+helm repo update
+helm install kong kong/kong --namespace kong --create-namespace --set ingressController.installCRDs=false
+4. Verificar pods y servicios
+bash
+Copiar
+Editar
+kubectl get pods -n servicios-estudiantiles
+kubectl get svc -n kong
+5. Exponer puerto de Kong para pruebas
+bash
+Copiar
+Editar
+kubectl port-forward svc/kong-kong-proxy 8080:80 -n kong
+Uso
+Realizar peticiones a través de Kong API Gateway (ejemplo con curl):
+
+bash
+Copiar
+Editar
+curl -X POST http://localhost:8080/solicitudes \
+ -H "Authorization: Bearer <tu_token_jwt>" \
+ -H "Content-Type: application/json" \
+ -d '{"id":"1234","tipo":"revision"}'
+Seguridad
+La autenticación JWT se valida en Kong mediante plugin JWT.
+
+El backend también puede validar tokens para capa extra de seguridad (configurable).
+
+mTLS entre servicios en Istio para comunicaciones seguras.
+
+Resiliencia y monitoreo
+Circuit Breaking y Retry configurados en Istio para llamadas internas (SolicitudService → SOAPClientService).
+
+Monitoreo y trazabilidad con Prometheus, Jaeger y Kiali.
+
+Visualización de métricas y trazas para análisis de rendimiento y fallos.
+
+Estructura del repositorio
+bash
+Copiar
+Editar
+/solicitud-service/       # Código fuente microservicio REST
+/soapclient-service/      # Código fuente mock SOAP REST
+/k8s-manifests/           # YAMLs para Kubernetes (deployments, services, ingress, plugins, Istio)
+/docs/                    # Documentación y diagramas
+README.md                 # Este archivo
