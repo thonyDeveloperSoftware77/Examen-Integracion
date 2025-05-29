@@ -47,3 +47,52 @@ El proyecto utiliza Kubernetes (Minikube) con Istio Service Mesh para resilienci
 eval $(minikube docker-env)
 docker build -t solicitud-service:latest ./solicitud-service
 docker build -t soapclient-service:latest ./soapclient-service
+
+
+#Crear un namespace
+kubectl apply -f k8s-manifests/namespace.yaml
+kubectl apply -f k8s-manifests/solicitud-deployment.yaml
+kubectl apply -f k8s-manifests/soapclient-deployment.yaml
+kubectl apply -f k8s-manifests/istio-peer-authentication.yaml
+kubectl apply -f k8s-manifests/istio-destinationrule.yaml
+kubectl apply -f k8s-manifests/istio-virtualservice.yaml
+kubectl apply -f k8s-manifests/kong-jwt-plugin.yaml
+kubectl apply -f k8s-manifests/kong-rate-limit-plugin.yaml
+kubectl apply -f k8s-manifests/kong-ingress.yaml
+
+
+#Instalar Kong API Gateway (si no está instalado)
+bash
+helm repo add kong https://charts.konghq.com
+helm repo update
+helm install kong kong/kong --namespace kong --create-namespace --set ingressController.installCRDs=false
+#Verificar pods y servicios
+
+kubectl get pods -n servicios-estudiantiles
+kubectl get svc -n kong
+#Exponer puerto de Kong para pruebas
+kubectl port-forward svc/kong-kong-proxy 8080:80 -n kong
+
+
+#Uso
+Realizar peticiones a través de Kong API Gateway (ejemplo con curl):
+
+bash
+curl -X POST http://localhost:8080/solicitudes \
+ -H "Authorization: Bearer <tu_token_jwt>" \
+ -H "Content-Type: application/json" \
+ -d '{"id":"1234","tipo":"revision"}'
+
+#Seguridad
+La autenticación JWT se valida en Kong mediante plugin JWT.
+
+El backend también puede validar tokens para capa extra de seguridad (configurable).
+
+mTLS entre servicios en Istio para comunicaciones seguras.
+
+Resiliencia y monitoreo
+Circuit Breaking y Retry configurados en Istio para llamadas internas (SolicitudService → SOAPClientService).
+
+Monitoreo y trazabilidad con Prometheus, Jaeger y Kiali.
+
+Visualización de métricas y trazas para análisis de rendimiento y fallos.
